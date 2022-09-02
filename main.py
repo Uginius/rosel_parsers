@@ -1,5 +1,8 @@
+from raitings_ows.main_ows import get_wb_goods
+
+
 def run_programs():
-    pass
+    get_wb_goods()
 
 
 if __name__ == '__main__':
