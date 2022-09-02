@@ -61,8 +61,29 @@ def request_get_data(url, retry=3, timeout=20):
     return response
 
 
-def initiate_chrome_browser():
-    options = webdriver.ChromeOptions()
-    for sel_arg in selenium_arguments:
-        options.add_argument(sel_arg)
-    return webdriver.Chrome(service=Service(executable_path=browser_path), options=options)
+class ChromeBrowser:
+    def __init__(self):
+        options = webdriver.ChromeOptions()
+        for sel_arg in selenium_arguments:
+            options.add_argument(sel_arg)
+        self.browser = webdriver.Chrome(service=Service(executable_path=browser_path), options=options)
+
+    def get(self, url, wait_time=3):
+        self.browser.get(url)
+        time.sleep(wait_time)
+        return self.browser.page_source
+
+    def page_source(self):
+        return self.browser.page_source
+
+    def scroll_down(self, wait_time=0.5):
+        last_height = self.browser.execute_script("return document.body.scrollHeight")
+        self.browser.execute_script(f"window.scrollTo(0, {last_height});")
+        time.sleep(wait_time)
+        while True:
+            self.browser.execute_script(f"window.scrollTo(0, document.body.scrollHeight);")
+            new_height = self.browser.execute_script("return document.body.scrollHeight")
+            time.sleep(wait_time)
+            if new_height == last_height:
+                break
+            last_height = new_height
