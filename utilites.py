@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 import os
 import re
@@ -59,6 +60,11 @@ def request_get_data(url, retry=3, timeout=20):
             response = None
             print('Connection error', ex)
     return response
+
+
+def write_json(json_filename, data):
+    with open(json_filename, 'w', encoding='utf8') as write_file:
+        json.dump(data, write_file, ensure_ascii=False)
 
 
 class ChromeBrowser:

@@ -11,3 +11,5 @@ req_headers = {
 
 dir_template, date_template = r'202\d-\d{2}-\d{2}', '%Y-%m-%d'
 today = datetime.datetime.now().strftime(date_template)
+
+shops = ['akson', 'baucenter', 'dns', 'maxidom', 'sdvor', 'votonia']

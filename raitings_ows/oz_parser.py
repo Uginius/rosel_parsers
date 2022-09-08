@@ -1,9 +1,7 @@
 import os
 import random
-
 from bs4 import BeautifulSoup
 from openpyxl import Workbook
-
 from config import today
 from utilites import check_dir, ChromeBrowser
 
