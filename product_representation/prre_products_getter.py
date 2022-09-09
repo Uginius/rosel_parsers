@@ -16,13 +16,12 @@ class PrRePageGetter(Thread):
         platforms_settings = {'oz': [self.oz_parser, self.oz_sender], 'wb': [self.wb_parser, self.wb_sender]}
         self.platform = shop
         self.goals = goals[shop]
-        self.browser = ChromeBrowser()
+        self.browser = None
         self.parser, self.sender = platforms_settings[shop]
         self.clean_data = None
         self.all_data = {}
         self.json_folder = f'product_representation/json_files/{today}'
         self.raw_data = None
-        self.browser = ChromeBrowser() if shop == 'oz' else None
 
     def run(self):
         print(f'{self.platform} - start to get pages ******\n', end='')
@@ -39,7 +38,6 @@ class PrRePageGetter(Thread):
 
     def oz_parser(self):
         self.clean_data, data = None, {}
-        print('Количество товаров по запросу:', len(self.raw_data))
         for order, html_product in enumerate(self.raw_data, 1):
             merch = self.get_oz_elements(html_product)
             if not merch:
@@ -75,14 +73,15 @@ class PrRePageGetter(Thread):
         return None
 
     def oz_sender(self, shop_query):
+        self.browser = ChromeBrowser()
         self.browser.get(f'https://www.ozon.ru/search/?text={shop_query}', wait_time=random.randint(4, 9))
-        self.browser.scroll_down()
         soup = BeautifulSoup(self.browser.page_source(), 'lxml')
+        self.browser.close()
         try:
             product_class = soup.find('div', class_='widget-search-result-container').div.div['class']
             self.raw_data = soup.find_all('div', class_=product_class)
         except Exception as e:
-            print(f'OZ product class error, query: {shop_query}', e)
+            print(f'OZ product class error, query: {shop_query}.', e)
             self.raw_data = None
 
     def wb_sender(self, shop_query):

@@ -1,3 +1,4 @@
+from product_representation.prre_monthly_data_analytics import PrReMonthlyDataAnalytics
 from product_representation.prre_products_getter import PrRePageGetter
 from utilites import time_track
 
@@ -16,5 +17,12 @@ def get_prre_pages():
             getter.join()
 
 
+@time_track
+def prre_convert_json_to_tables():
+    res = PrReMonthlyDataAnalytics()
+    res.run()
+
+
 def run_prre():
-    get_prre_pages()
+    # get_prre_pages()
+    prre_convert_json_to_tables()

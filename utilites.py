@@ -16,7 +16,7 @@ def time_track(func):
         started_at = time.time()
         result = func(*args, **kwargs)
         ended_at = time.time()
-        elapsed = round(ended_at - started_at, 3)
+        elapsed = round(ended_at - started_at)
         minutes = round(elapsed / 60, 2)
         print(f'Функция работала {elapsed} секунд(ы), или {minutes} минут\n')
         return result
@@ -68,9 +68,10 @@ def write_json(json_filename, data):
 
 
 class ChromeBrowser:
-    def __init__(self):
+    def __init__(self, sandbox=False):
         options = webdriver.ChromeOptions()
-        for sel_arg in selenium_arguments:
+        sa = selenium_arguments if sandbox is False else selenium_arguments[:-2]
+        for sel_arg in sa:
             options.add_argument(sel_arg)
         self.browser = webdriver.Chrome(service=Service(executable_path=browser_path), options=options)
 
@@ -93,3 +94,7 @@ class ChromeBrowser:
             if new_height == last_height:
                 break
             last_height = new_height
+
+    def close(self):
+        if self.browser:
+            self.browser.close()
