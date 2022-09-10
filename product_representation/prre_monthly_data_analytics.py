@@ -1,43 +1,12 @@
 import json
-import os
-import re
-from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.styles import Font, Side, Border, PatternFill, Alignment
 from openpyxl.styles.numbers import BUILTIN_FORMATS
-from config import date_template, dir_template
-from product_representation.src.prre_goals import oz_goals, wb_goals
-from utilites import get_last_dir, check_dir
+from product_representation.prre_utils import last_month_json_files, get_first_rqs
+from product_representation.src.prre_goals import goals_and_terms
+from utilites import check_dir
 
-shoplist = ['oz', 'wb']
 sellers = ['РОСЭЛ', 'ФОТОН', 'SAFELINE', 'КОНТАКТ', 'КОНТАКТ ДОМ', 'РЕКОРД', 'ORGANIDE']
-goals_and_terms = {'oz': oz_goals, 'wb': wb_goals}
-
-
-def last_month_json_files(shop):
-    folder = "product_representation/json_files"
-    folder = os.path.join(folder, get_last_dir(folder))
-    jsf = {}
-    for filename in os.listdir(folder):
-        find_date = re.findall(dir_template, filename)
-        is_platform = shop in filename
-        if find_date and is_platform:
-            jsf[datetime.strptime(find_date[0], date_template)] = filename
-    dates = sorted(list(jsf.keys()))
-    last = dates[-1]
-    last_month_files = {d: f'{folder}/{jsf[d]}' for d in dates if d.year == last.year and d.month == last.month}
-    return last_month_files
-
-
-def get_first_rqs(platform):
-    last_cat = ''
-    first_requests = {}
-    for rq, terms in goals_and_terms[platform].items():
-        category = terms['category']
-        if category != last_cat:
-            first_requests[rq] = category
-            last_cat = category
-    return first_requests
 
 
 class PrReMonthlyDataAnalytics:
@@ -57,12 +26,12 @@ class PrReMonthlyDataAnalytics:
 
     def run(self):
         self.initiate_workbook()
-        self.platform_actions(shoplist[0])
-        self.platform_actions(shoplist[1])
+        self.platform_actions('oz')
+        self.platform_actions('wb')
         self.save_table()
 
     def initiate_workbook(self):
-        for shop in shoplist:
+        for shop in ['oz', 'wb']:
             self.workbook.create_sheet(shop)
         if 'Sheet' in self.workbook.sheetnames:
             self.workbook.remove(self.workbook['Sheet'])
@@ -159,7 +128,6 @@ class PrReMonthlyDataAnalytics:
         for req_id, terms in goals.items():
             if first_rqs.get(req_id):
                 self.check_category(terms['category'])
-                continue
             self.current_goal = terms['goal']
             self.set_body_lines(req_id, terms)
 
@@ -300,4 +268,6 @@ class PrReMonthlyDataAnalytics:
         last_date = list(self.all_platform_goods['oz'])[0].strftime('%Y-%B')
         folder = 'xls_results/prre'
         check_dir(folder)
-        self.workbook.save(f'{folder}/representation_{last_date}.xlsx')
+        filename = f'{folder}/representation_{last_date}.xlsx'
+        self.workbook.save(filename)
+        print(f'*** File "{filename}" saved.')
