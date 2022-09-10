@@ -7,9 +7,11 @@ from openpyxl.styles import Font, Side, Border, PatternFill, Alignment
 from openpyxl.styles.numbers import BUILTIN_FORMATS
 from config import date_template, dir_template
 from product_representation.src.prre_goals import oz_goals, wb_goals
-from utilites import get_last_dir
+from utilites import get_last_dir, check_dir
 
 shoplist = ['oz', 'wb']
+sellers = ['РОСЭЛ', 'ФОТОН', 'SAFELINE', 'КОНТАКТ', 'КОНТАКТ ДОМ', 'РЕКОРД', 'ORGANIDE']
+goals_and_terms = {'oz': oz_goals, 'wb': wb_goals}
 
 
 def last_month_json_files(shop):
@@ -21,28 +23,35 @@ def last_month_json_files(shop):
         is_platform = shop in filename
         if find_date and is_platform:
             jsf[datetime.strptime(find_date[0], date_template)] = filename
-    dates = jsf.keys()
-    last = sorted(dates)[-1]
+    dates = sorted(list(jsf.keys()))
+    last = dates[-1]
     last_month_files = {d: f'{folder}/{jsf[d]}' for d in dates if d.year == last.year and d.month == last.month}
     return last_month_files
 
 
+def get_first_rqs(platform):
+    last_cat = ''
+    first_requests = {}
+    for rq, terms in goals_and_terms[platform].items():
+        category = terms['category']
+        if category != last_cat:
+            first_requests[rq] = category
+            last_cat = category
+    return first_requests
+
+
 class PrReMonthlyDataAnalytics:
     def __init__(self):
-        self.json_filenames = {'oz': last_month_json_files('oz'), 'wb': last_month_json_files('wb')}
-        self.goals_and_terms = {'oz': oz_goals, 'wb': wb_goals}
         self.current_goal = None
         self.platform_requests = {}
         self.platform_goods = []
         self.all_platform_goods = {}
-        self.first_rq_in_category = {}
         self.categories = {}
         self.date = {}
         self.rosel_goods = {}
         self.workbook = Workbook()
         self.shop = None
         self.sheet = None
-        self.req_id = None
         self.line_kpi = 0
         self.total_kpi = 0
 
@@ -50,12 +59,16 @@ class PrReMonthlyDataAnalytics:
         self.initiate_workbook()
         self.platform_actions(shoplist[0])
         self.platform_actions(shoplist[1])
-        last_date = list(self.all_platform_goods['oz'])[0]
-        self.workbook.save(f"xls_result/{last_date.strftime('%Y-%B')}.xlsx")
+        self.save_table()
+
+    def initiate_workbook(self):
+        for shop in shoplist:
+            self.workbook.create_sheet(shop)
+        if 'Sheet' in self.workbook.sheetnames:
+            self.workbook.remove(self.workbook['Sheet'])
 
     def platform_actions(self, platform):
-        self.total_kpi = 0
-        self.shop = platform
+        self.total_kpi, self.shop = 0, platform
         self.get_json()
         self.add_caption()
         self.add_titles()
@@ -64,28 +77,30 @@ class PrReMonthlyDataAnalytics:
 
     def get_json(self):
         platform = self.shop
+        json_filenames = {'oz': last_month_json_files('oz'), 'wb': last_month_json_files('wb')}
         goods = {}
-        for date, filename in self.json_filenames[platform].items():
+        for date, filename in json_filenames[platform].items():
             print(f'opening {filename}')
             with open(filename, 'r', encoding='utf8') as file:
-                self.rosel_goods = {}
-                self.set_rosel_goods(file)
-                goods.update({date: self.rosel_goods})
-        self.rosel_goods = {}
+                json_req = dict(json.load(file))
+            self.set_rosel_goods(json_req)
+            goods[date] = self.rosel_goods
         self.all_platform_goods[platform] = goods
 
-    def set_rosel_goods(self, file):
-        sellers = ['РОСЭЛ', 'Фотон', 'Safeline', 'Контакт', 'КОНТАКТ Дом', 'Рекорд', 'ORGANIDE']
-        json_req = json.load(file)
-        req, req_id = list(json_req.values())[0], list(json_req)[0]
-        products = []
-        for order, prod in req.items():
-            prod_id = prod['shop_id']
-            if prod['brand'] in sellers:
-                if self.check_incorrect_goods(req_id, prod_id):
+    def set_rosel_goods(self, json_data):
+        self.rosel_goods = {}
+        for request_id, search_results in json_data.items():
+            true_positions = {}
+            for order in search_results:
+                merch = search_results[order]
+                loaded_brand = merch['brand']
+                if not loaded_brand:
                     continue
-                products.append({int(prod_id): [order, prod['name']]})
-        self.rosel_goods[req_id] = products
+                if loaded_brand.upper() in sellers:
+                    merch_name = merch['name']
+                    merch_id = merch['shop_id']
+                    true_positions[int(order)] = f'{merch_id}, №{order}: {merch_name}'
+            self.rosel_goods[request_id] = true_positions
 
     def check_incorrect_goods(self, req_id, prod_id):
         ban_prs = {'индикаторная отвертка': ['38710001', '79676933'], 'отвертка индикаторная': ['38710001', '79676933']}
@@ -139,63 +154,58 @@ class PrReMonthlyDataAnalytics:
     def add_body(self):
         platform = self.shop
         self.platform_goods = [date for date in self.all_platform_goods[platform].values()]
-        goals = self.goals_and_terms[platform]
-        self.req_id = None
-        for self.req_id in self.platform_requests:
-            self.check_category()
-            self.current_goal = goals[self.req_id]
-            self.set_body_lines()
+        goals = goals_and_terms[platform]
+        first_rqs = get_first_rqs(platform)
+        for req_id, terms in goals.items():
+            if first_rqs.get(req_id):
+                self.check_category(terms['category'])
+                continue
+            self.current_goal = terms['goal']
+            self.set_body_lines(req_id, terms)
 
-    def set_body_lines(self):
+    def set_body_lines(self, req_id, terms):
         self.line_kpi = 0
         sw = self.sheet
         first_row_number = sw.max_row + 1
-        req_id = self.req_id
         all_dates_shop_products_for_rq = [prods[req_id] for prods in self.platform_goods]
-        products_q = [len(el) for el in all_dates_shop_products_for_rq]
-        max_goods_q = max(products_q)
-        prods = [prs for prs in all_dates_shop_products_for_rq]
-        rq = self.platform_requests[req_id]
+        quantity_in_dates = [len(el) for el in all_dates_shop_products_for_rq]
+        max_goods_q = max(quantity_in_dates)
+        products_in_dates = [prs for prs in all_dates_shop_products_for_rq]
         if max_goods_q:
-            self.body_lines_to_table(products_q=products_q, prods=prods, max_goods_q=max_goods_q)
+            self.body_lines_to_table(quantity_in_dates=quantity_in_dates, products_in_dates=products_in_dates,
+                                     max_goods_q=max_goods_q, terms=terms)
         else:
-            empty = [None] * len(products_q)
+            empty = [None] * len(quantity_in_dates)
             kpi = None
-            result = [rq, self.current_goal, kpi, *products_q, *empty]
+            result = [terms['request'], self.current_goal, kpi, *quantity_in_dates, *empty]
             sw.append(result)
-        self.merge_body_cells(fst_row=first_row_number, lens=products_q)
+        self.merge_body_cells(fst_row=first_row_number, lens=quantity_in_dates, req_id=req_id)
         # self.row_top_borders(current_row_number)
 
-    def body_lines_to_table(self, products_q, prods, max_goods_q):
-        dates_quantity = len(products_q)
-        for el in prods:
-            len_rq_prod_list = len(el)
-            if len_rq_prod_list < max_goods_q:
-                for num in range(len_rq_prod_list, max_goods_q):
-                    el.append(None)
-        prod_lines = [[prods[date][n] for date in range(dates_quantity)] for n in range(max_goods_q)]
-        for n, prl in enumerate(prod_lines):
-            second = []
-            for pq in products_q:
-                if pq == 0:
-                    second.append(0 if n > pq - 1 else pq)
-                else:
-                    second.append(None if n > pq - 1 else pq)
-            pr_names = []
-            for p in prl:
-                pr_names.append(p.order_name()) if p else pr_names.append(None)
-            kpi = None
-            result = [self.platform_requests[self.req_id], self.current_goal, kpi, *second, *pr_names]
-            self.sheet.append(result)
+    def body_lines_to_table(self, quantity_in_dates, products_in_dates, max_goods_q, terms):
+        dates_amount = len(quantity_in_dates)
+        dates_lines = []
+        for date in products_in_dates:
+            date_products = list(date.values())
+            len_date = len(date_products)
+            if len_date < max_goods_q:
+                for num in range(len_date, max_goods_q):
+                    date_products.append(None)
+            dates_lines.append(date_products)
+        for prod_number in range(max_goods_q):
+            products_count = quantity_in_dates if prod_number == 0 else [None] * dates_amount
+            products_line = [dates_lines[date][prod_number] for date in range(dates_amount)]
+            line = [terms['request'], terms['goal'], None, *products_count, *products_line]
+            self.sheet.append(line)
 
-    def merge_body_cells(self, fst_row, lens):
+    def merge_body_cells(self, fst_row, lens, req_id):
         max_q = max(lens)
         last_row = fst_row + max_q - 1 if max_q else fst_row
         # last_row = fst_row + max_q - 1
-        self.merge_abc(fst=fst_row, last=last_row, lens=lens)
-        self.merge_goods_cells(first_row=fst_row, lens=lens)
+        self.merge_abc(fst=fst_row, last=last_row)
+        self.merge_goods_cells(first_row=fst_row, lens=lens, req_id=req_id)
 
-    def merge_abc(self, fst, last, lens):
+    def merge_abc(self, fst, last):
         sw = self.sheet
         sw[f'A{fst}'].alignment = Alignment(horizontal='left', vertical='center')
         sw[f'B{fst}'].alignment = Alignment(horizontal='left', vertical='center')
@@ -205,7 +215,7 @@ class PrReMonthlyDataAnalytics:
             sw.merge_cells(f'B{fst}:B{last}')
             sw.merge_cells(f'C{fst}:C{last}')
 
-    def merge_goods_cells(self, first_row, lens):
+    def merge_goods_cells(self, first_row, lens, req_id):
         sw = self.sheet
         first_cell = ord('D')
         rows = max(lens)
@@ -223,7 +233,7 @@ class PrReMonthlyDataAnalytics:
                 cell2 = f'{column2}{first_row}'
                 sw.merge_cells(f'{cell2}:{column2}{last_row}')
             sw[cell].alignment = Alignment(horizontal='center', vertical='center')
-            self.check_goals(cell, self.platform_goods[n][self.req_id])
+            self.check_goals(cell, self.platform_goods[n][req_id])
             self.row_top_borders(first_row)
         kpi_cell = sw[f'C{first_row}']
         kpi_cell.value = self.line_kpi
@@ -231,9 +241,7 @@ class PrReMonthlyDataAnalytics:
     def check_goals(self, cl, goods):
         cell = self.sheet[cl]
         cond = self.is_conditions_true(cell=cell, goods=goods)
-        color_yes = 'C4D79B'
-        color_no = 'E6B8B7'
-        color = color_yes if cond else color_no
+        color = 'C4D79B' if cond else 'E6B8B7'
         cell.fill = PatternFill("solid", fgColor=color)
         self.total_kpi += 1
         if cond:
@@ -258,26 +266,17 @@ class PrReMonthlyDataAnalytics:
                 top5 = []
                 for prod in goods:
                     if prod:
-                        if prod.order < 6:
-                            top5.append(prod.order)
+                        if prod < 6:
+                            top5.append(prod)
                 # top5 = [prod.order for prod in goods if prod.order < 6]
                 return True if top5 else False
 
-    def check_category(self):
-        if self.req_id not in self.first_rq_in_category.keys():
-            return
-        category_name = self.first_rq_in_category[self.req_id]
+    def check_category(self, category_name):
         self.sheet.append([category_name])
         max_row = self.sheet.max_row
         max_column = chr(ord('A') + self.sheet.max_column - 1)
         self.sheet.merge_cells(f'A{max_row}:{max_column}{max_row}')
         self.set_style_to_categoy_cell(max_row)
-
-    def initiate_workbook(self):
-        for shop in shoplist:
-            self.workbook.create_sheet(shop)
-        if 'Sheet' in self.workbook.sheetnames:
-            self.workbook.remove(self.workbook['Sheet'])
 
     def set_style_to_categoy_cell(self, row_order):
         cat_font = Font(name='Calibri', size=11, color="000000", bold=True)
@@ -296,4 +295,9 @@ class PrReMonthlyDataAnalytics:
         sw.append([None, None, kpi_result])
         result_cell = sw[f'C{row + 1}']
         result_cell.number_format = BUILTIN_FORMATS[10]
-        pass
+
+    def save_table(self):
+        last_date = list(self.all_platform_goods['oz'])[0].strftime('%Y-%B')
+        folder = 'xls_results/prre'
+        check_dir(folder)
+        self.workbook.save(f'{folder}/representation_{last_date}.xlsx')
