@@ -69,14 +69,21 @@ def write_json(json_filename, data):
 
 class ChromeBrowser:
     def __init__(self, sandbox=False):
-        options = webdriver.ChromeOptions()
+        self.options = webdriver.ChromeOptions()
         sa = selenium_arguments if sandbox is False else selenium_arguments[:-2]
         for sel_arg in sa:
-            options.add_argument(sel_arg)
-        self.browser = webdriver.Chrome(service=Service(executable_path=browser_path), options=options)
+            self.options.add_argument(sel_arg)
+        self.browser = webdriver.Chrome(service=Service(executable_path=browser_path), options=self.options)
+        self.browser.set_page_load_timeout(30)
 
-    def get(self, url, wait_time=3):
-        self.browser.get(url)
+    def get(self, url, wait_time=3, trs=3):
+        try:
+            self.browser.get(url)
+        except Exception as e:
+            trs = trs - 1 if trs > 0 else 0
+            if trs:
+                self.get(url, wait_time=3, trs=trs)
+            print(e, url)
         time.sleep(wait_time)
         return self.browser.page_source
 

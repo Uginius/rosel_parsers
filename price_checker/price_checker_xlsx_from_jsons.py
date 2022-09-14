@@ -2,12 +2,13 @@ import json
 import os
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill, Alignment
-from utilites import get_last_dir
+from price_checker.checker_utilites import get_platform
+from utilites import get_last_dir, check_dir
 
 
-class JsonToXlsConverter:
+class JsonPriceToXls:
     def __init__(self, actual_table):
-        json_folder = 'json_from_web_loads/'
+        json_folder = 'price_checker/web_data/'
         self.date = get_last_dir(json_folder)
         self.src_folder = json_folder + self.date
         self.platform_prices = {}
@@ -42,11 +43,16 @@ class JsonToXlsConverter:
                 continue
             row_id = f'{order:03}'
             price = prices[platform].get(row_id)
+            try:
+                price = float(price)
+            except Exception as e:
+                pass
             row[price_col].value = price
 
     def write_result(self):
-        check_dir('xls_results')
-        self.workbook.save(f"xls_results/{self.date}.xlsx")
+        folder = 'xls_results/price_ch'
+        check_dir(folder)
+        self.workbook.save(f"{folder}/{self.date}_price_checker.xlsx")
 
     def add_new_price_column(self, ws):
         col_max = ws.max_column

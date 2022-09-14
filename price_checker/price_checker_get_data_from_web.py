@@ -22,7 +22,7 @@ class CheckingPricePageLoader(Thread):
         self.collected_data = {}
 
     def run(self):
-        # if self.platform != 'dns':  # only this platform
+        # if self.platform != 'megastroy':  # only this platform
         #     return
         if self.use_selenium:
             try:
@@ -41,7 +41,7 @@ class CheckingPricePageLoader(Thread):
             url = self.goods[row]
             wait = randint(4, 9)
             shop_info = f'{self.platform:>10}'
-            print(f'{shop_info} ({order:03}/{ll:03}), row: {row}, wait: {wait} | connecting to url: {url}')
+            print(f'{shop_info} ({order:03}/{ll:03}), row: {row}, wait: {wait} | connecting to url: {url}\n', end='')
             self.get_page(url, wait)
             self.parse_page()
         self.save_data()
