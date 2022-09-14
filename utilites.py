@@ -44,7 +44,7 @@ def id_url_from_table(xls_filename, page):
     for order, row in enumerate(ws, 1):
         if order < 2:
             continue
-        stock[order] = row[0].value
+        stock[f'{order:03}'] = row[0].value
     return stock
 
 
