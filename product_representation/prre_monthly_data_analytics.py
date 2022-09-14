@@ -268,6 +268,6 @@ class PrReMonthlyDataAnalytics:
         last_date = list(self.all_platform_goods['oz'])[0].strftime('%Y-%B')
         folder = 'xls_results/prre'
         check_dir(folder)
-        filename = f'{folder}/representation_{last_date}.xlsx'
+        filename = f'{folder}/{last_date}_representation_oz-wb.xlsx'
         self.workbook.save(filename)
         print(f'*** File "{filename}" saved.')
