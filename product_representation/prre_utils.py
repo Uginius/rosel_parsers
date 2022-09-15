@@ -1,15 +1,18 @@
 import os
 import re
 from datetime import datetime
-
-from config import dir_template, date_template
+from config import dir_template, date_template, month_template
 from product_representation.src.prre_goals import goals_and_terms
-from utilites import get_last_dir
+
+
+def get_last_month(folder):
+    dates_dirs = [datetime.strptime(el, month_template) for el in os.listdir(folder)]
+    return sorted(dates_dirs)[-1].strftime(month_template)
 
 
 def last_month_json_files(shop):
     folder = "product_representation/json_files"
-    folder = os.path.join(folder, get_last_dir(folder))
+    folder = os.path.join(folder, get_last_month(folder))
     jsf = {}
     for filename in os.listdir(folder):
         find_date = re.findall(dir_template, filename)

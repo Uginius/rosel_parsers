@@ -15,7 +15,9 @@ req_headers = {
     'accept': '*/*', 'accept-encoding': 'gzip, deflate, br', 'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
     'user-agent': ua}
 
-dir_template, date_template = r'202\d-\d{2}-\d{2}', '%Y-%m-%d'
+dir_template = r'202\d-\d{2}-\d{2}'
+date_template, month_template = '%Y-%m-%d', '%Y-%B'
 today = datetime.datetime.now().strftime(date_template)
+cur_month = datetime.datetime.now().strftime(month_template)
 
 shops = ['akson', 'baucenter', 'dns', 'maxidom', 'sdvor', 'votonia']

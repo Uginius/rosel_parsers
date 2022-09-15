@@ -3,7 +3,7 @@ import time
 import requests
 from threading import Thread
 from bs4 import BeautifulSoup
-from config import today
+from config import today, cur_month
 from product_representation.src.prre_goals import oz_goals, wb_goals
 from utilites import ChromeBrowser, write_json, check_dir
 
@@ -20,7 +20,7 @@ class PrRePageGetter(Thread):
         self.parser, self.sender = platforms_settings[shop]
         self.clean_data = None
         self.all_data = {}
-        self.json_folder = f'product_representation/json_files/{today}'
+        self.json_folder = f'product_representation/json_files/{cur_month}'
         self.raw_data = None
 
     def run(self):
