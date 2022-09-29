@@ -4,6 +4,7 @@ import requests
 from threading import Thread
 from bs4 import BeautifulSoup
 from config import today, cur_month
+from product_representation.log_config import log
 from product_representation.src.prre_goals import oz_goals, wb_goals
 from utilites import ChromeBrowser, write_json, check_dir
 
@@ -24,17 +25,38 @@ class PrRePageGetter(Thread):
         self.raw_data = None
 
     def run(self):
-        print(f'{self.platform} - start to get pages ******\n', end='')
-        for rq_id, rq_data in self.goals.items():
+        self.get_pages(self.goals)
+        self.check_errors()
+        self.save_json()
+
+    def get_pages(self, src_data, msg='start to get pages ******'):
+        log.info(f'{self.platform} - {msg}')
+        for rq_id, rq_data in src_data.items():
+            ll = len(src_data)
             query = rq_data['request']
             self.sender(query)
             if not self.raw_data:
                 continue
-            self.parser()
-            self.all_data[rq_id] = self.clean_data
-            ll = len(self.goals)
-            print(f'{self.platform}, found {len(self.clean_data)} items, request id: {rq_id}/{ll}, query: {query}')
-        self.save_json()
+            request_id = f'request id: {rq_id}/{ll}'
+            try:
+                self.parser()
+                self.all_data[rq_id] = self.clean_data
+                log.info(f'{self.platform}, found {len(self.clean_data)} items, {request_id}, query: {query}')
+            except Exception as e:
+                log.error(f'[{self.platform}], {request_id}, query: {query}, ERROR: {e}')
+
+    def check_errors(self):
+        log_filename = 'logs/prre_oz_wb.log'
+        goals_errors = {}
+        with open(log_filename, 'r', encoding='utf8') as rf:
+            for line in rf:
+                if 'ERROR' in line:
+                    platform = line.split('| [')[1].split(']')[0]
+                    if platform != self.platform:
+                        continue
+                    rq_id = line.split('id: ')[1].split('/')[0]
+                    goals_errors[rq_id] = self.goals[rq_id]
+        self.get_pages(goals_errors, msg='trying to Re-Get error pages ******')
 
     def oz_parser(self):
         self.clean_data, data = None, {}
@@ -72,16 +94,25 @@ class PrRePageGetter(Thread):
             return 'Ozon'
         return None
 
-    def oz_sender(self, shop_query):
+    def get_data_from_browser(self, url):
         self.browser = ChromeBrowser()
-        self.browser.get(f'https://www.ozon.ru/search/?text={shop_query}', wait_time=random.randint(4, 9))
-        soup = BeautifulSoup(self.browser.page_source(), 'lxml')
-        self.browser.close()
+        try:
+            self.browser.get(url, wait_time=random.randint(6, 10))
+            soup = BeautifulSoup(self.browser.page_source(), 'lxml')
+            self.browser.close()
+        except Exception as e:
+            log.error(f'[{self.platform}] error getting data from browser, {e}')
+            soup = None
+        return soup
+
+    def oz_sender(self, shop_query):
+        url = f'https://www.ozon.ru/search/?text={shop_query}'
+        soup = self.get_data_from_browser(url)
         try:
             product_class = soup.find('div', class_='widget-search-result-container').div.div['class']
             self.raw_data = soup.find_all('div', class_=product_class)
         except Exception as e:
-            print(f'OZ product class error, query: {shop_query}.', e)
+            log.error(f'OZ product class error, query: {shop_query}. {e}')
             self.raw_data = None
 
     def wb_sender(self, shop_query):
@@ -96,7 +127,7 @@ class PrRePageGetter(Thread):
             self.raw_data = response.json()['data']['products']
             time.sleep(random.randint(3, 7))
         except Exception as e:
-            print(e)
+            log.error(e)
             self.raw_data = None
 
     def wb_parser(self):
@@ -111,6 +142,7 @@ class PrRePageGetter(Thread):
 
     def save_json(self):
         check_dir(self.json_folder)
-        write_json(f'{self.json_folder}/{self.platform}_{today}.json', self.all_data)
+        json_filename = f'{self.json_folder}/{self.platform}_{today}.json'
+        write_json(json_filename, self.all_data)
 
 # url = f'https://www.ozon.ru/search/?from_global=true&page={page}&seller=6793'

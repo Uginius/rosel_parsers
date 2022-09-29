@@ -64,7 +64,7 @@ def request_get_data(url, retry=3, timeout=20):
 
 def write_json(json_filename, data):
     with open(json_filename, 'w', encoding='utf8') as write_file:
-        json.dump(data, write_file, ensure_ascii=False)
+        json.dump(data, write_file, ensure_ascii=False, indent=4)
 
 
 class ChromeBrowser:
