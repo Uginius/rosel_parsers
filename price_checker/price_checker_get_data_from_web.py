@@ -25,11 +25,7 @@ class CheckingPricePageLoader(Thread):
         # if self.platform != 'megastroy':  # only this platform
         #     return
         if self.use_selenium:
-            try:
-                self.browser = ChromeBrowser()
-            except Exception as e:
-                print(f'{self.platform} Browser Error', e)
-                self.browser = None
+            self.browser = ChromeBrowser()
         self.get_pages()
         if self.browser:
             self.browser.close()
