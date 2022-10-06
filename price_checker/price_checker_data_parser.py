@@ -1,5 +1,9 @@
 import json
 from bs4 import BeautifulSoup
+from logging_config import set_logging
+
+log = set_logging('prices_errors')
+no_price = 'ERROR'
 
 
 def get_price(src, platform):
@@ -9,7 +13,8 @@ def get_price(src, platform):
             span = soup.find('span', class_='price-block_price')
             if not span:
                 return
-            price = float(span.text.strip().split('.–')[0].replace(' ', ''))
+            dirty_price_data = span.text.strip().split('.–')[0].replace(' ', '')
+            price = float(dirty_price_data) if dirty_price_data != 'зашт' else no_price
         case 'dns':
             pre = json.loads(soup.find('pre').text)
             price = float(pre['data']['offers']['price'])
@@ -37,7 +42,10 @@ def get_price(src, platform):
             price = float(soup.find('title').text.split('по цене ')[1].split(' руб.')[0])
         case 'petrovich':
             price_details = soup.find('div', class_='price-details')
-            price = float(price_details.find_all('p')[1].text.split('₽')[0].replace(' ', ''))
+            if price_details:
+                price = float(price_details.find_all('p')[1].text.split('₽')[0].replace(' ', ''))
+            else:
+                price = no_price
         case 'ststroitel':
             price_value = soup.find('span', class_='price_value').text.split()
             price = float(''.join(price_value))
@@ -46,10 +54,10 @@ def get_price(src, platform):
     return price
 
 
-def get_data_from_loaded_page(src, merch_id, platform):
+def get_data_from_loaded_page(src, row, platform):
     try:
         price = get_price(src, platform)
     except Exception as ex:
-        print(platform, merch_id, '*' * 30, ex)
-        price = 'ERROR'
+        log.error(f'{platform}, row: {row}, {ex}')
+        price = no_price
     return price
