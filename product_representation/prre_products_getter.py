@@ -4,11 +4,13 @@ import requests
 from threading import Thread
 from bs4 import BeautifulSoup
 from config import today, cur_month
-from product_representation.log_config import log
+from logging_config import set_logging
 from product_representation.src.prre_goals import oz_goals, wb_goals
 from utilites import ChromeBrowser, write_json, check_dir
 
 goals = {'oz': oz_goals, 'wb': wb_goals}
+logs_name = 'pre_logs'
+log = set_logging(logs_name)
 
 
 class PrRePageGetter(Thread):
@@ -41,12 +43,13 @@ class PrRePageGetter(Thread):
             try:
                 self.parser()
                 self.all_data[rq_id] = self.clean_data
-                log.info(f'{self.platform}, found {len(self.clean_data)} items, {request_id}, query: {query}')
+                log.info(f'{self.platform}, found {len(self.clean_data):3}, {request_id}, query: {query}')
             except Exception as e:
                 log.error(f'[{self.platform}], {request_id}, query: {query}, ERROR: {e}')
+        log.info(f'****** {self.platform} - data collected')
 
     def check_errors(self):
-        log_filename = 'logs/prre_oz_wb.log'
+        log_filename = f'logs/{logs_name}.log'
         goals_errors = {}
         with open(log_filename, 'r', encoding='utf8') as rf:
             for line in rf:
@@ -56,7 +59,8 @@ class PrRePageGetter(Thread):
                         continue
                     rq_id = line.split('id: ')[1].split('/')[0]
                     goals_errors[rq_id] = self.goals[rq_id]
-        self.get_pages(goals_errors, msg='trying to Re-Get error pages ******')
+        if goals_errors:
+            self.get_pages(goals_errors, msg='trying to Re-Get error pages ******')
 
     def oz_parser(self):
         self.clean_data, data = None, {}
@@ -144,5 +148,6 @@ class PrRePageGetter(Thread):
         check_dir(self.json_folder)
         json_filename = f'{self.json_folder}/{self.platform}_{today}.json'
         write_json(json_filename, self.all_data)
+        log.info(f'{json_filename} saved')
 
 # url = f'https://www.ozon.ru/search/?from_global=true&page={page}&seller=6793'

@@ -109,6 +109,10 @@ class ChromeBrowser:
                 break
             last_height = new_height
 
+    def scroll_up(self, wait_time=0.5):
+        self.browser.execute_script(f"window.scrollTo(0, 0);")
+        time.sleep(wait_time)
+
     def close(self):
         if self.browser:
             self.browser.close()
