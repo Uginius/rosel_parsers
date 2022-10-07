@@ -67,6 +67,12 @@ def write_json(json_filename, data):
         json.dump(data, write_file, ensure_ascii=False, indent=4)
 
 
+def load_json(json_filename):
+    with open(json_filename, 'r', encoding='utf8') as read_file:
+        result = json.load(read_file)
+    return result
+
+
 class ChromeBrowser:
     def __init__(self, sandbox=False, timeout=30):
         self.options = webdriver.ChromeOptions()
