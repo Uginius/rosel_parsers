@@ -1,8 +1,5 @@
-import random
 import time
-
 from bs4 import BeautifulSoup
-
 from config import today
 from logging_config import set_logging
 from ratings_trade_platforms.product import Product
@@ -22,26 +19,50 @@ def set_urls():
 def collect_data(soup):
     goods_html = soup.find('div', class_='widget-search-result-container').div
     goods = {}
-    for order, merch in enumerate(goods_html.find_all('div', recursive=False), 0):
+    for merch in goods_html.find_all('div', recursive=False):
         if not merch.text:
             continue
+        data_merch = merch.find_all(recursive=False)[1]
+        merch_divs = data_merch.find_all('div', recursive=False)
         cp = Product()
-        local_a = merch.find_all('a')[1]
-        cp.shop_id = int(local_a['href'].split('/?')[0].split('-')[-1][:-1])
+        local_a = data_merch.a
+        cp.shop_id = int(local_a['href'].split('/?')[0].split('-')[-1])
         cp.name = local_a.text.strip()
         cp.url = 'https://www.ozon.ru' + local_a['href'].split('?')[0]
         try:
-            rating = float(merch.find('div', class_='ui-da3')['style'].split(':')[1][:-2])
-            cp.rating = round((5 * rating) / 100, 2)
-            cp.feedbacks = int(merch.find('div', class_='rk3 yd2').a.text.split()[0])
-        except Exception as ex:
-            log.error(f'Cant get rating #{cp.shop_id}, {cp.name}, {cp.url}, {ex}')
-            cp.rating, cp.feedbacks = None, None
-        try:
-            cp.price = merch.find('div', class_='ui-o4').text.split(' ₽')[0]
+            price = merch_divs[1].text.split(' ₽')[0]
+            cp.price = float(''.join(price.split()))
         except Exception as ex:
             log.error(f'Cant get price #{cp.shop_id}, {cp.name}, {cp.url}, {ex}')
             cp.price = None
+        rate_box = merch_divs[3]
+        if 'продавец' in rate_box.text:
+            rate_box = merch_divs[2]
+        try:
+            rtb = rate_box.div.div.find_all('div', recursive=False)[1]
+            rating = float(rtb['style'].split(':')[1][:-2])
+            cp.rating = round((5 * rating) / 100, 2)
+            cp.feedbacks = int(rate_box.a.text.split()[0])
+        except Exception as ex:
+            log.error(f'Cant get rating #{cp.shop_id}, {cp.name}, {cp.url}, {ex}')
+            cp.rating, cp.feedbacks = None, None
+        pass
+        # local_a = merch.find_all('a')[1]
+        # cp.shop_id = int(local_a['href'].split('/?')[0].split('-')[-1])
+        # cp.name = local_a.text.strip()
+        # cp.url = 'https://www.ozon.ru' + local_a['href'].split('?')[0]
+        # try:
+        #     rating = float(merch.find('div', class_='ui-da3')['style'].split(':')[1][:-2])
+        #     cp.rating = round((5 * rating) / 100, 2)
+        #     cp.feedbacks = int(merch.find('div', class_='rk3 yd2').a.text.split()[0])
+        # except Exception as ex:
+        #     log.error(f'Cant get rating #{cp.shop_id}, {cp.name}, {cp.url}, {ex}')
+        #     cp.rating, cp.feedbacks = None, None
+        # try:
+        #     cp.price = merch.find('div', class_='ui-o4').text.split(' ₽')[0]
+        # except Exception as ex:
+        #     log.error(f'Cant get price #{cp.shop_id}, {cp.name}, {cp.url}, {ex}')
+        #     cp.price = None
         goods.update(cp.json_items())
     return goods
 

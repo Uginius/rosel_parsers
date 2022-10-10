@@ -22,6 +22,6 @@ def collect_json_to_xls():
 
 
 def get_wb_goods():
-    ows_get_wb_pages()
+    # ows_get_wb_pages()
     ows_get_oz_pages()
-    collect_json_to_xls()
+    # collect_json_to_xls()
