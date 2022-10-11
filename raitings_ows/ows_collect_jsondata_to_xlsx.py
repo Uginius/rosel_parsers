@@ -1,5 +1,7 @@
+import os
+from datetime import datetime
 from openpyxl.workbook import Workbook
-from config import today
+from config import date_template
 from logging_config import set_logging
 from utilites import load_json, check_dir
 
@@ -8,11 +10,19 @@ json_folder = 'raitings_ows/json_files'
 
 
 def select_last_date_files():
-    return ['oz_2022-10-07.json', 'wb_2022-10-07.json']
+    json_dates = {}
+    for filename in os.listdir(json_folder):
+        date = datetime.strptime(filename[3:-5], date_template)
+        if json_dates.get(date):
+            json_dates[date].append(filename)
+        else:
+            json_dates[date] = [filename]
+    last_date = sorted(list(json_dates))[-1]
+    return last_date.strftime(date_template), json_dates[last_date]
 
 
 def make_xls_file():
-    last_files = select_last_date_files()
+    last_date, last_files = select_last_date_files()
     wb = Workbook()
     for json_filename in last_files:
         shop = json_filename[:2]
@@ -32,7 +42,7 @@ def make_xls_file():
     wb.remove(wb['Sheet'])
     result_dir = 'xls_results/ows'
     check_dir(result_dir)
-    wb.save(f"{result_dir}/ows_{today}.xlsx")
+    wb.save(f"{result_dir}/ows_{last_date}.xlsx")
 
 
 def convert_jsondata_to_xls():
