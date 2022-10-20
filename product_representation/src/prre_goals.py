@@ -11,8 +11,10 @@ def load_goals(ws, shop):
         res[rq_id] = {'category': cat, 'request': req, 'goal': goal}
     return res
 
-
-prre_workbook = load_workbook('product_representation/src/repr_goals.xlsx')
+try:
+    prre_workbook = load_workbook('product_representation/src/repr_goals.xlsx')
+except Exception as ex:
+    prre_workbook = load_workbook(r'C:\work\python_projects\rosel_parsers\product_representation\src\repr_goals.xlsx')
 oz_goals = load_goals(prre_workbook['OZ'], 'oz')
 wb_goals = load_goals(prre_workbook['WB'], 'wb')
 goals_and_terms = {'oz': oz_goals, 'wb': wb_goals}
