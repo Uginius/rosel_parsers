@@ -14,7 +14,7 @@ def set_logging(log_name):
         "handlers": {'console': {'class': 'logging.StreamHandler', 'stream': sys.stdout, 'level': 'INFO',
                                  'formatter': 'fmt_console'},
                      'file': {'class': 'logging.FileHandler', 'formatter': 'fmt_file', 'level': 'DEBUG',
-                              'filename': filename, 'encoding': 'utf8', 'mode': 'w'}},
+                              'filename': filename, 'encoding': 'utf8', 'mode': 'a'}},
         "loggers": {log_name: {'level': 'DEBUG', 'handlers': ['console', 'file']}},
     }
     logging.config.dictConfig(dict_config)

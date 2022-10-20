@@ -8,9 +8,12 @@ ua_mac = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KH
          'Chrome/105.0.0.0 Safari/537.36'
 ua_computers = {'linux': None, 'darwin': ua_mac, 'win32': ua_win}
 driver_path = {'linux': None, 'darwin': 'drivers/chromedriver', 'win32': 'drivers/chromedriver.exe'}
+undetected_chromedriver_ver = 105
 browser_path = driver_path[computer]
 ua = ua_computers[computer]
-selenium_arguments = [f'user-agent={ua}', '--disable-blink-features=AutomationControlled', '--headless', '--no-sandbox']
+selenium_arguments = [f'user-agent={ua}',
+                      '--disable-blink-features=AutomationControlled',
+                      '--headless', '--no-sandbox']
 req_headers = {
     'accept': '*/*', 'accept-encoding': 'gzip, deflate, br', 'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
     'user-agent': ua}

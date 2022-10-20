@@ -4,8 +4,12 @@ import os
 import re
 import time
 import requests
-from selenium import webdriver
+
+# from selenium import webdriver
+# from selenium.webdriver.chrome.service import Service
+from seleniumwire import webdriver
 from selenium.webdriver.chrome.service import Service
+
 from config import selenium_arguments, browser_path
 from openpyxl import load_workbook
 from config import date_template, dir_template, req_headers
@@ -30,6 +34,7 @@ def check_dir(folder):
             os.makedirs(folder)
     except Exception as ex:
         print(ex)
+    return folder
 
 
 def get_last_dir(folder):
@@ -67,6 +72,11 @@ def write_json(json_filename, data):
         json.dump(data, write_file, ensure_ascii=False, indent=4)
 
 
+def append_json(json_filename, data):
+    with open(json_filename, 'a', encoding='utf8') as write_file:
+        json.dump(data, write_file, ensure_ascii=False, indent=4)
+
+
 def load_json(json_filename):
     with open(json_filename, 'r', encoding='utf8') as read_file:
         result = json.load(read_file)
@@ -74,9 +84,11 @@ def load_json(json_filename):
 
 
 class ChromeBrowser:
-    def __init__(self, sandbox=False, timeout=30):
+    def __init__(self, sandbox=False, timeout=30, proxy=None):
         self.options = webdriver.ChromeOptions()
         sa = selenium_arguments if sandbox is False else selenium_arguments[:-2]
+        if proxy:
+            sa.append(proxy)
         for sel_arg in sa:
             self.options.add_argument(sel_arg)
         self.browser = None
