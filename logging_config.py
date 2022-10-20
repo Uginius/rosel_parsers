@@ -3,7 +3,7 @@ import logging.config
 from utilites import check_dir
 
 
-def set_logging(log_name):
+def set_logging(log_name, mode='a'):
     log_dir = 'logs'
     check_dir(log_dir)
     filename = f'{log_dir}/{log_name}.log'
@@ -14,7 +14,7 @@ def set_logging(log_name):
         "handlers": {'console': {'class': 'logging.StreamHandler', 'stream': sys.stdout, 'level': 'INFO',
                                  'formatter': 'fmt_console'},
                      'file': {'class': 'logging.FileHandler', 'formatter': 'fmt_file', 'level': 'DEBUG',
-                              'filename': filename, 'encoding': 'utf8', 'mode': 'a'}},
+                              'filename': filename, 'encoding': 'utf8', 'mode': mode}},
         "loggers": {log_name: {'level': 'DEBUG', 'handlers': ['console', 'file']}},
     }
     logging.config.dictConfig(dict_config)
