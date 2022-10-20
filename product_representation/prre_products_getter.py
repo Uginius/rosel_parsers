@@ -6,11 +6,20 @@ from bs4 import BeautifulSoup
 from config import today, cur_month
 from logging_config import set_logging
 from product_representation.src.prre_goals import oz_goals, wb_goals
-from utilites import ChromeBrowser, write_json, check_dir
+from utilites import write_json, check_dir, ChromeBrowser
+from vpn.crome2 import Chrome2
 
 goals = {'oz': oz_goals, 'wb': wb_goals}
 logs_name = 'pre_logs'
-log = set_logging(logs_name)
+log = set_logging(logs_name, write_errors=True)
+
+
+def get_seller(seller):
+    if 'продавец' in seller:
+        return seller.split('продавец ')[1]
+    if seller == 'За час курьером Ozon Express':
+        return 'Ozon'
+    return None
 
 
 class PrRePageGetter(Thread):
@@ -23,7 +32,7 @@ class PrRePageGetter(Thread):
         self.parser, self.sender = platforms_settings[shop]
         self.clean_data = None
         self.all_data = {}
-        self.json_folder = f'product_representation/json_files/{cur_month}'
+        self.json_folder = check_dir(f'product_representation/json_files/{cur_month}')
         self.raw_data = None
 
     def run(self):
@@ -42,15 +51,18 @@ class PrRePageGetter(Thread):
             request_id = f'request id: {rq_id}/{ll}'
             try:
                 self.parser()
+                q_products = len(self.clean_data)
+                if q_products == 4:
+                    raise Exception('Only 4 items found')
                 self.all_data[rq_id] = self.clean_data
-                log.info(f'{self.platform}, found {len(self.clean_data):3}, {request_id}, query: {query}')
+                log.info(f'{self.platform}, found {q_products :3}, {request_id}, query: {query}')
             except Exception as e:
                 log.error(f'[{self.platform}], {request_id}, query: {query}, ERROR: {e}')
         log.info(f'****** {self.platform} - data collected')
 
     def check_errors(self):
         log_filename = f'logs/{logs_name}.log'
-        goals_errors = {}
+        goals_errors_ids = []
         with open(log_filename, 'r', encoding='utf8') as rf:
             for line in rf:
                 if 'ERROR' in line:
@@ -58,9 +70,16 @@ class PrRePageGetter(Thread):
                     if platform != self.platform:
                         continue
                     rq_id = line.split('id: ')[1].split('/')[0]
-                    goals_errors[rq_id] = self.goals[rq_id]
-        if goals_errors:
-            self.get_pages(goals_errors, msg='trying to Re-Get error pages ******')
+                    goals_errors_ids.append(rq_id)
+        if goals_errors_ids:
+            self.get_selected_rqs(goals_errors_ids)
+
+    def get_selected_rqs(self, rqs_ids):
+        goal_to_rq = {}
+        for rq_id in rqs_ids:
+            goal_to_rq[rq_id] = self.goals[rq_id]
+        q_ids = len(rqs_ids)
+        self.get_pages(goal_to_rq, msg=f'Trying to get {q_ids} pages ******')
 
     def oz_parser(self):
         self.clean_data, data = None, {}
@@ -81,9 +100,9 @@ class PrRePageGetter(Thread):
             card = divs[0]
             link = card.find('a', class_='tile-hover-target')
             seller_div = card.find_all('div', recursive=False)[-1].find_all('div', recursive=False)[-1]
-            merch_seller = self.get_seller(seller_div.find_all(recursive=False)[-1].text)
+            merch_seller = get_seller(seller_div.find_all(recursive=False)[-1].text)
         else:
-            merch_seller = self.get_seller(divs[2].find_all('div', recursive=False)[-1].find_all('span')[3].text)
+            merch_seller = get_seller(divs[2].find_all('div', recursive=False)[-1].find_all('span')[3].text)
         merch_name = link.text.strip()
         merch_url = 'https://www.ozon.ru' + link['href'].split('/?')[0]
         merch_id = merch_url.split('-')[-1]
@@ -91,22 +110,16 @@ class PrRePageGetter(Thread):
             merch_id = merch_id.split('/')[-1]
         return {'brand': merch_seller, 'shop_id': merch_id, 'name': merch_name, 'url': merch_url}
 
-    def get_seller(self, seller):
-        if 'продавец' in seller:
-            return seller.split('продавец ')[1]
-        if seller == 'За час курьером Ozon Express':
-            return 'Ozon'
-        return None
-
     def get_data_from_browser(self, url):
-        self.browser = ChromeBrowser()
+        self.browser = ChromeBrowser(sandbox=True)
         try:
             self.browser.get(url, wait_time=random.randint(6, 10))
             soup = BeautifulSoup(self.browser.page_source(), 'lxml')
-            self.browser.close()
         except Exception as e:
             log.error(f'[{self.platform}] error getting data from browser, {e}')
             soup = None
+        if self.browser:
+            self.browser.close()
         return soup
 
     def oz_sender(self, shop_query):
@@ -145,9 +158,15 @@ class PrRePageGetter(Thread):
         self.clean_data = data
 
     def save_json(self):
-        check_dir(self.json_folder)
         json_filename = f'{self.json_folder}/{self.platform}_{today}.json'
         write_json(json_filename, self.all_data)
         log.info(f'{json_filename} saved')
 
+
 # url = f'https://www.ozon.ru/search/?from_global=true&page={page}&seller=6793'
+
+if __name__ == '__main__':
+    data = ['oz019', 'oz045']
+    oz_getter = PrRePageGetter('oz')
+    oz_getter.get_selected_rqs(data)
+    oz_getter.save_json()
