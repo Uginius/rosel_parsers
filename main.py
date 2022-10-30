@@ -1,5 +1,3 @@
-# from ratings_trade_platforms.main_tp import run_trade_platforms_rating
-
 def product_representation_runner():
     from product_representation.main_representation import run_prre
     run_prre()
@@ -11,15 +9,20 @@ def price_checker_runner():
 
 
 def ows_rating_runner():
-    from raitings_ows.main_ows import get_wb_goods
+    from ratings_ows.main_ows import get_wb_goods
     get_wb_goods()
 
 
+def tp_runner():
+    from ratings_trade_platforms.main_tp import run_trade_platforms_rating
+    run_trade_platforms_rating()
+
+
 def run_programs():
-    ows_rating_runner()
+    # ows_rating_runner()
     # price_checker_runner()
     # product_representation_runner()
-    # run_trade_platforms_rating()
+    tp_runner()
 
 
 if __name__ == '__main__':

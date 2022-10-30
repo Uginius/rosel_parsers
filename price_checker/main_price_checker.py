@@ -27,13 +27,20 @@ def create_result_xls_from_json():
 
 @time_track
 def start_updating_products():
-    from price_checker.prc_update_products import update_goods
-    update_goods()
+    from price_checker.checker_utilites import shops_for_update_data
+    from price_checker.update_goods_programs.prc_goods_data_updater import PricesDataUpdater
+    from price_checker.update_goods_programs.table_from_updated_goods import create_table_from_updated_goods
+    log.info(f'★★★ Update data started with {len(shops_for_update_data)} platforms ★★★')
+    data_updaters = [PricesDataUpdater(shop) for shop in shops_for_update_data]
+    for updater in data_updaters:
+        updater.start()
+    for updater in data_updaters:
+        updater.join()
+    create_table_from_updated_goods()
 
 
 def start_price_checking():
-    # get_pages('rosel')
-    # get_pages('oppo')
-    # create_result_xls_from_json()
-
-    start_updating_products()
+    # start_updating_products()
+    get_pages('rosel')
+    get_pages('oppo')
+    create_result_xls_from_json()

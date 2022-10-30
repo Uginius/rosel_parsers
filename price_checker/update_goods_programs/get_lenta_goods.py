@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
-
 from config import today
-from price_checker.prc_update_products import update_goods_folder
+from logging_config import set_logging
+from price_checker.checker_utilites import update_goods_folder
 from ratings_trade_platforms.product import Product
 from utilites import ChromeBrowser, write_json
 
@@ -13,6 +13,8 @@ lenta_urls = [
     'https://lenta.com/search/?searchText=Safeline',
     'https://lenta.com/search/?searchText=%D0%A0%D0%B5%D0%BA%D0%BE%D1%80%D0%B4',
 ]
+shop = 'lenta'
+log_lenta = set_logging(f'price_{shop}')
 
 
 def get_goods(html_list):
@@ -38,13 +40,13 @@ def start_getting_lenta_products():
     goods = {}
     browser = ChromeBrowser()
     for url in lenta_urls:
-        print(f'*** opening {url}')
+        log_lenta(f'*** opening {url}')
         browser.get(url)
         soup = BeautifulSoup(browser.page_source(), 'lxml')
         products = get_goods(soup.find_all('div', class_='sku-card-small-container'))
-        print(f'*** collected {len(products)} items')
+        log_lenta(f'*** collected {len(products)} items')
         goods.update(products)
-    write_json(f'{update_goods_folder}data_lenta_{today}.json', goods)
+    write_json(f'{update_goods_folder}data_{shop}_{today}.json', goods)
 
 
 if __name__ == '__main__':

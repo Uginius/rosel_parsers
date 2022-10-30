@@ -2,8 +2,11 @@ import json
 import os
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill, Alignment
+from logging_config import set_logging
 from price_checker.checker_utilites import get_platform
 from utilites import get_last_dir, check_dir
+
+log = set_logging('price_checker')
 
 
 class JsonPriceToXls:
@@ -50,9 +53,9 @@ class JsonPriceToXls:
             row[price_col].value = price
 
     def write_result(self):
-        folder = 'xls_results/price_ch'
-        check_dir(folder)
-        self.workbook.save(f"{folder}/{self.date}_price_checker.xlsx")
+        filename = f'{check_dir("xls_results/price_ch")}/{self.date}_price_checker.xlsx'
+        self.workbook.save(filename)
+        log.info(f'{filename} saved')
 
     def add_new_price_column(self, ws):
         col_max = ws.max_column

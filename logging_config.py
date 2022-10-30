@@ -24,7 +24,7 @@ def set_logging(log_name, mode='a', write_errors=False):
         err_filename = f'{log_dir}/{log_name}_err.log'
         handlers = dict_config['handlers']
         handlers['errors'] = {
-            'class': 'logging.FileHandler', 'level': 'DEBUG', 'formatter': 'fmt_file',
+            'class': 'logging.FileHandler', 'level': 'ERROR', 'formatter': 'fmt_file',
             'filename': err_filename, 'encoding': 'utf8', 'mode': 'w'}
 
     dict_config.update({

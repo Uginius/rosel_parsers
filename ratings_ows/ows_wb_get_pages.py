@@ -54,7 +54,7 @@ class WbJsonBrandsGetter:
         time.sleep(1)
 
     def save_json(self):
-        folder = f'raitings_ows/json_files'
+        folder = f'ratings_ows/json_files'
         check_dir(folder)
         json_filename = f'{folder}/wb_{today}.json'
         write_json(json_filename, self.goods)

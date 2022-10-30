@@ -3,9 +3,13 @@ import urllib.parse
 from threading import Thread
 from bs4 import BeautifulSoup
 from config import today
+from logging_config import set_logging
 from ratings_trade_platforms.all_parsers import tp_parser
 from ratings_trade_platforms.tp_config import search_phrases, blocklist, brand_list
-from utilites import check_dir, ChromeBrowser, write_json
+from utilites import check_dir, write_json
+from vpn.crome2 import Chrome2
+
+pla_log = set_logging('pla_page_getter')
 
 
 class PageGetter(Thread):
@@ -29,10 +33,10 @@ class PageGetter(Thread):
         self.goods_list = None
 
     def run(self):
-        # if self.shop != 'votonia':
+        # if self.shop in ['akson', 'baucenter', 'dns', 'sdvor', 'votonia']:
         #     return
-        print(f'№{self.instance_order} {self.shop} - start to get pages ******\n', end='')
-        self.browser = ChromeBrowser()
+        pla_log.info(f'№{self.instance_order} {self.shop} - start to get pages ******')
+        self.browser = Chrome2(sandbox=True)
         for self.cur_phrase in self.phrases:
             self.has_pagination = 0
             self.page_pos = 0
@@ -41,17 +45,17 @@ class PageGetter(Thread):
                 self.get_other_pages()
         check_dir(self.folder)
         write_json(f'{self.folder}/{self.shop}.json', self.goods)
-        print(f'****** №{self.instance_order} {self.shop} finished. Collected {len(self.goods)} products')
+        pla_log.info(f'****** №{self.instance_order} {self.shop} finished. Collected {len(self.goods)} products')
+        if self.browser:
+            self.browser.close()
 
     def get_first_page(self):
         self.get_page()
-        if self.shop == 'dns':
-            time.sleep(10)
         self.parse_page()
         try:
             self.get_last_page_number()
         except Exception as ex:
-            print(f'{self.shop}, getting last page number error...', ex)
+            pla_log.error(f'{self.shop}, getting last page number error... {ex}')
             self.has_pagination = 0
 
     def get_other_pages(self):
@@ -61,8 +65,16 @@ class PageGetter(Thread):
 
     def get_page(self):
         self.generate_url()
-        self.browser.get(url=self.current_url)
-        self.browser.scroll_down()
+        try:
+            self.browser.get(url=self.current_url)
+            if self.shop in ['akson']:
+                time.sleep(5)
+            self.browser.scroll_down()
+        except Exception as ex:
+            pla_log.error(f"Error getting {self.current_url}")
+            # if self.browser:
+            #     self.browser.close()
+            #     self.browser = ChromeBrowser()
 
     def generate_url(self):
         pos = self.page_pos
@@ -88,14 +100,14 @@ class PageGetter(Thread):
                 url = ''
         self.current_url = url
         pag = self.has_pagination if self.has_pagination else 'FF'
-        print(f'№{self.instance_order} {self.shop:<9} {self.cur_phrase:8} {pos:02}/{pag :02}, connect to {url}')
+        pla_log.info(f'№{self.instance_order} {self.shop:<9} {self.cur_phrase:8} {pos:02}/{pag :02}, connect to {url}')
 
     def parse_page(self):
         self.soup = BeautifulSoup(self.browser.page_source(), 'lxml')
         try:
             self.get_goods_list()
         except Exception as ex:
-            print('Goods list loading error', ex)
+            pla_log.error(f'Goods list loading error, {ex}')
         if self.goods_list:
             for html_product in self.goods_list:
                 cp = self.parser(html_product)
@@ -143,4 +155,3 @@ class PageGetter(Thread):
                 self.goods_list = self.soup.find_all('div', class_='wfloat cat_product_box is-product')
             case _:
                 self.goods_list = None
-

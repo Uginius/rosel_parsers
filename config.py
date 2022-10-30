@@ -23,4 +23,11 @@ date_template, month_template = '%Y-%m-%d', '%Y-%B'
 today = datetime.datetime.now().strftime(date_template)
 cur_month = datetime.datetime.now().strftime(month_template)
 
-shops = ['akson', 'baucenter', 'dns', 'maxidom', 'sdvor', 'votonia']
+shops = [
+    # 'akson',
+    # 'baucenter',
+    'dns',
+    'maxidom',
+    # 'sdvor',
+    # 'votonia'
+]

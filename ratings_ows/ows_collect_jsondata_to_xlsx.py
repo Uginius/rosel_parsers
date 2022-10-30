@@ -6,7 +6,7 @@ from logging_config import set_logging
 from utilites import load_json, check_dir
 
 log = set_logging('ows_xlsx')
-json_folder = 'raitings_ows/json_files'
+json_folder = 'ratings_ows/json_files'
 
 
 def select_last_date_files():
@@ -40,9 +40,7 @@ def make_xls_file():
             prod = [int(shop_id), p['name'], p['brand'], p['url'], price, p['rating'], p['feedbacks']]
             ws.append(prod)
     wb.remove(wb['Sheet'])
-    result_dir = 'xls_results/ows'
-    check_dir(result_dir)
-    wb.save(f"{result_dir}/ows_{last_date}.xlsx")
+    wb.save(f'{check_dir("xls_results/ows")}/ows_{last_date}.xlsx')
 
 
 def convert_jsondata_to_xls():

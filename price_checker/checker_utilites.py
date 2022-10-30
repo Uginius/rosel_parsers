@@ -1,10 +1,21 @@
-used_platforms = ['baucenter', 'dns', 'maxidom', 'megastroy', 'petrovich', 'ststroitel', 'vprok']
+used_platforms = sorted([
+    'baucenter', 'dns', 'maxidom', 'megastroy', 'petrovich', 'ststroitel', 'vprok'
+])
+shops_for_update_data = {
+    'ach': 'auchan',
+    'glo': 'globus',
+    'lnt': 'lenta',
+    'oke': 'okeydostavka',
+}
 
 
 def get_platform(shop_url):
-    for shop in used_platforms:
-        if shop in shop_url:
-            return shop
+    try:
+        for shop in used_platforms:
+            if shop in shop_url:
+                return shop
+    except TypeError:
+        pass
     return None
 
 

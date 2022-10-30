@@ -1,11 +1,15 @@
+import json
 import random
 import time
-
 import requests
 from bs4 import BeautifulSoup
+
+from logging_config import set_logging
 from ratings_trade_platforms.product import Product
 from ratings_trade_platforms.tp_config import brand_list
 from utilites import ChromeBrowser
+
+log = set_logging('pla_parsers')
 
 
 def get_maxidom_rating(url):
@@ -13,11 +17,12 @@ def get_maxidom_rating(url):
         browser = ChromeBrowser()
         browser.get(url, wait_time=random.randint(1, 4))
         soup = BeautifulSoup(browser.page_source(), 'lxml')
-        rating_value = float(soup.find('div', class_='score__number').text)
-        grades = soup.find('div', class_='score-rating').find_all('div', class_='scale__number')
-        review_count = sum(int(mark.text) for mark in grades)
+        data = json.loads(soup.find('pre').text)['Stats']
+        review_count = data['ReviewsTotalCount']
+        rates_total_sum = data['RatesTotalSum']
+        rating_value = round(rates_total_sum / review_count, 2) if review_count else None
     except Exception as ex:
-        print(ex)
+        log.error(ex)
         rating_value, review_count = None, None
     return [rating_value, review_count]
 
@@ -138,11 +143,14 @@ def akson_goods_parser(html_prod):
         cp.price = float(''.join(price))
     except AttributeError:
         cp.price = 'Продажи прекращены'
-    rate = html_prod.find('span', class_='rating')
-    stars = rate.find('span', class_='stars__block stars__block_fill')['style']
-    percent = int(stars.split(':')[1][:-2])
-    cp.rating = (percent * 5) / 100
-    cp.feedbacks = int(rate.text.split('(')[1].split(')')[0])
+    try:
+        rate = html_prod.find('span', class_='rating')
+        stars = rate.find('span', class_='stars__block stars__block_fill')['style']
+        percent = int(stars.split(':')[1][:-2])
+        cp.rating = (percent * 5) / 100
+        cp.feedbacks = int(rate.text.split('(')[1].split(')')[0])
+    except TypeError as ex:
+        log.error(f'akson rating error, {ex}')
     return cp
 
 
@@ -180,7 +188,7 @@ def maxidom_goods_parser(html_product):
     cp.status = html_product.find('div', class_='item-controls').span.text.strip()
     cp.price = float(html_product.find('span', class_='price-list').text.split(',-')[0].strip().replace(' ', ''))
     maxi_url = f'https://www.maxidom.ru/ajax/mneniya_pro/getReviewsHtml.php?SKU_ID={cp.shop_id}'
-    print(' ' * 12, f'opening {maxi_url}')
+    log.info(f'maxidom _____ opening {maxi_url}')
     cp.rating, cp.feedbacks = get_maxidom_rating(maxi_url)
     return cp
 
@@ -195,7 +203,7 @@ def get_votonia_rating(url):
         rating_value = float(line.b.text.strip().replace('"', ''))
         review_count = int(line.text.strip().split()[-2])
     except Exception as ex:
-        print('Votonia rating error', ex, url)
+        log.error(f'Votonia rating error, {url}, {ex}')
         rating_value, review_count = None, None
     return [rating_value, review_count]
 

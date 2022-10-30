@@ -8,6 +8,7 @@ from logging_config import set_logging
 from product_representation.src.prre_goals import oz_goals, wb_goals
 from utilites import write_json, check_dir, ChromeBrowser
 from vpn.crome2 import Chrome2
+from vpn.sequre import ips
 
 goals = {'oz': oz_goals, 'wb': wb_goals}
 logs_name = 'pre_logs'
@@ -34,6 +35,7 @@ class PrRePageGetter(Thread):
         self.all_data = {}
         self.json_folder = check_dir(f'product_representation/json_files/{cur_month}')
         self.raw_data = None
+        self.proxy = None
 
     def run(self):
         self.get_pages(self.goals)
@@ -55,7 +57,7 @@ class PrRePageGetter(Thread):
                 if q_products == 4:
                     raise Exception('Only 4 items found')
                 self.all_data[rq_id] = self.clean_data
-                log.info(f'{self.platform}, found {q_products :3}, {request_id}, query: {query}')
+                log.info(f'{self.platform}, found {q_products :3}, {request_id}, query: {query}, proxy: {self.proxy}')
             except Exception as e:
                 log.error(f'[{self.platform}], {request_id}, query: {query}, ERROR: {e}')
         log.info(f'****** {self.platform} - data collected')
@@ -111,9 +113,9 @@ class PrRePageGetter(Thread):
         return {'brand': merch_seller, 'shop_id': merch_id, 'name': merch_name, 'url': merch_url}
 
     def get_data_from_browser(self, url):
-        self.browser = ChromeBrowser(sandbox=True)
+        self.browser = Chrome2(sandbox=True, proxy_passless=self.proxy)
         try:
-            self.browser.get(url, wait_time=random.randint(6, 10))
+            self.browser.get(url)
             soup = BeautifulSoup(self.browser.page_source(), 'lxml')
         except Exception as e:
             log.error(f'[{self.platform}] error getting data from browser, {e}')
@@ -123,6 +125,8 @@ class PrRePageGetter(Thread):
         return soup
 
     def oz_sender(self, shop_query):
+        self.proxy = ips.pop(0)
+        ips.append(self.proxy)
         url = f'https://www.ozon.ru/search/?text={shop_query}'
         soup = self.get_data_from_browser(url)
         try:

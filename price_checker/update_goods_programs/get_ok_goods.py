@@ -1,13 +1,15 @@
 from bs4 import BeautifulSoup
-
 from config import today
-from price_checker.prc_update_products import update_goods_folder
+from logging_config import set_logging
+from price_checker.checker_utilites import update_goods_folder
 from ratings_trade_platforms.product import Product
 from utilites import write_json
 from vpn.crome2 import Chrome2
 
 srh = 'https://www.okeydostavka.ru/webapp/wcs/stores/servlet/SearchDisplay?categoryId=&storeId=10151&searchTerm='
 links = [srh + 'фотон', srh + 'контакт', srh + 'рекорд', srh + 'safeline', ]
+shop = 'ok'
+log_ok = set_logging(f'price_{shop}')
 
 
 def get_goods(html_list):
@@ -32,11 +34,10 @@ def start_getting_ok_products():
     goods = {}
     browser = Chrome2(sandbox=True)
     for url in links:
-        print(f'*** opening {url}')
+        log_ok(f'*** opening {url}')
         browser.get(url)
         soup = BeautifulSoup(browser.page_source(), 'lxml')
         products = get_goods(soup.find_all('div', class_='product ok-theme'))
-        print(f'*** collected {len(products)} items')
+        log_ok(f'*** collected {len(products)} items')
         goods.update(products)
-    write_json(f'{update_goods_folder}data_ok_{today}.json', goods)
-
+    write_json(f'{update_goods_folder}data_{shop}_{today}.json', goods)
